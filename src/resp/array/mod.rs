@@ -1,14 +1,27 @@
+use std::fmt::{Display, Formatter};
 use std::future::Future;
 
 use anyhow::Result;
 use tokio::io::AsyncBufRead;
 
-use crate::resp::{AsyncCrlfReadExt, Resp, RespParsable};
+use crate::resp::{AsyncCrlfReadExt, Resp, RespVariant};
+
+mod run;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Array(Vec<Resp>);
 
-impl RespParsable for Array {
+impl Display for Array {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "*{}\r\n", self.0.len())?;
+        for element in &self.0 {
+            write!(f, "{}", element)?;
+        }
+        Ok(())
+    }
+}
+
+impl RespVariant for Array {
     const PREFIX: char = '*';
 
     fn parse_body(

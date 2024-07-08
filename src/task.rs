@@ -9,17 +9,16 @@ pub async fn run(listener: TcpListener) -> Result<()> {
     let mut join_set = JoinSet::new();
 
     loop {
-        let (mut socket, addr) = match listener.accept().await {
+        let (mut socket, _addr) = match listener.accept().await {
             Ok(socket_addr) => socket_addr,
             Err(e) => {
-                println!(
+                eprintln!(
                     "an error occurred while accepting a connection; error = {:?}",
                     e
                 );
                 break;
             }
         };
-        println!("Accepted connection from: {}", addr);
 
         join_set.spawn(async move {
             let (read, write) = socket.split();

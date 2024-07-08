@@ -1,7 +1,9 @@
 use anyhow::{bail, Result};
+use std::fmt::{Display, Formatter};
 use tokio::io::AsyncBufRead;
 
-use crate::resp::{AsyncCrlfReadExt, RespParsable};
+use crate::resp::simple_string::run_string;
+use crate::resp::{AsyncCrlfReadExt, Resp, RespRunnable, RespVariant};
 
 /// Represents a RESP bulk string.
 ///
@@ -9,7 +11,16 @@ use crate::resp::{AsyncCrlfReadExt, RespParsable};
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BulkString(pub Option<String>);
 
-impl RespParsable for BulkString {
+impl Display for BulkString {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            Some(s) => write!(f, "${}\r\n{}\r\n", s.len(), s),
+            None => write!(f, "${}\r\n", -1),
+        }
+    }
+}
+
+impl RespVariant for BulkString {
     const PREFIX: char = '$';
 
     async fn parse_body(read: &mut (impl AsyncBufRead + Unpin + Send)) -> Result<Self> {
@@ -28,6 +39,15 @@ impl RespParsable for BulkString {
         let line = String::from_utf8(bytes)?;
 
         Ok(BulkString(Some(line)))
+    }
+}
+
+impl RespRunnable for BulkString {
+    async fn run(self) -> Result<Resp> {
+        match self.0 {
+            None => bail!("bulk string is null"),
+            Some(s) => run_string(s),
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite};
+use std::fmt::{Display, Formatter};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 pub use array::Array;
 pub use bulk_string::BulkString;
@@ -9,7 +10,7 @@ mod array;
 mod bulk_string;
 mod simple_string;
 
-trait RespParsable {
+trait RespVariant: Display {
     const MAX_BYTES: usize = 1_000_000;
     const PREFIX: char;
 
@@ -18,11 +19,25 @@ trait RespParsable {
         Self: Sized;
 }
 
+trait RespRunnable {
+    async fn run(self) -> Result<Resp>;
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Resp {
     SimpleString(SimpleString),
     BulkString(BulkString),
     Array(Array),
+}
+
+impl Display for Resp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Resp::SimpleString(s) => write!(f, "{}", s),
+            Resp::BulkString(b) => write!(f, "{}", b),
+            Resp::Array(a) => write!(f, "{}", a),
+        }
+    }
 }
 
 impl Resp {
@@ -37,8 +52,8 @@ impl Resp {
         macro_rules! parse_body_types {
             [$($tt:tt),*] => {
                 $(
-                    if <$tt as RespParsable>::PREFIX == prefix[0] as char {
-                        return <$tt as RespParsable>::parse_body(read).await.map(Resp::$tt);
+                    if <$tt as RespVariant>::PREFIX == prefix[0] as char {
+                        return <$tt as RespVariant>::parse_body(read).await.map(Resp::$tt);
                     }
                 )*
             };
@@ -49,8 +64,29 @@ impl Resp {
         bail!("unknown prefix: {:?}", prefix[0] as char);
     }
 
-    pub async fn run(self, write: impl AsyncWrite + Unpin) -> Result<()> {
-        todo!()
+    pub async fn run(self, mut write: impl AsyncWrite + Unpin) -> Result<()> {
+        async fn run_inner(resp: Resp) -> Result<Resp> {
+            macro_rules! run_types {
+                [$($tt:tt),*] => {
+                    $(
+                        if let Resp::$tt(inner) =
+                        resp {
+                            return inner.run().await;
+                        }
+                    )*
+                };
+            }
+
+            run_types![SimpleString, BulkString, Array];
+
+            bail!("unknown resp type");
+        }
+
+        let resp = run_inner(self).await?;
+
+        write.write_all(resp.to_string().as_bytes()).await?;
+
+        Ok(())
     }
 }
 

@@ -13,3 +13,14 @@ pub async fn assert_parse(input: &str, expected: Resp) -> Result<()> {
 
     Ok(())
 }
+
+pub async fn assert_run(input: Resp, expected: Resp) -> Result<()> {
+    let mut buf = Vec::new();
+    input.run(&mut buf).await?;
+
+    let result = String::from_utf8(buf)?;
+
+    assert_eq!(result, expected.to_string());
+
+    Ok(())
+}
