@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use anyhow::Result;
 use tokio::io::AsyncBufRead;
 
@@ -9,20 +11,24 @@ pub struct Array(Vec<Resp>);
 impl RespParsable for Array {
     const PREFIX: char = '*';
 
-    async fn parse_body(read: &mut (impl AsyncBufRead + Unpin + Send)) -> Result<Self>
+    fn parse_body(
+        read: &mut (impl AsyncBufRead + Unpin + Send),
+    ) -> impl Future<Output = Result<Self>>
     where
         Self: Sized,
     {
-        let num_elements = read.read_crlf_line().await?.parse::<usize>()?;
+        Box::pin(async move {
+            let num_elements = read.read_crlf_line().await?.parse::<usize>()?;
 
-        let mut elements = Vec::with_capacity(num_elements);
+            let mut elements = Vec::with_capacity(num_elements);
 
-        for _ in 0..num_elements {
-            let element = Resp::parse(read).await?;
-            elements.push(element);
-        }
+            for _ in 0..num_elements {
+                let element = Resp::parse(read).await?;
+                elements.push(element);
+            }
 
-        Ok(Array(elements))
+            Ok(Array(elements))
+        })
     }
 }
 

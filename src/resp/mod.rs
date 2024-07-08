@@ -1,5 +1,3 @@
-use std::future::Future;
-
 use anyhow::{bail, Result};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite};
 
@@ -28,18 +26,15 @@ pub enum Resp {
 }
 
 impl Resp {
-    pub fn parse(
-        read: &mut (impl AsyncBufRead + Unpin + Send),
-    ) -> impl Future<Output = Result<Self>> + Send + '_ {
-        Box::pin(async move {
-            let mut prefix = [0; 1];
-            let bytes_read = read.read(&mut prefix).await?;
+    pub async fn parse(read: &mut (impl AsyncBufRead + Unpin + Send)) -> Result<Self> {
+        let mut prefix = [0; 1];
+        let bytes_read = read.read(&mut prefix).await?;
 
-            if bytes_read == 0 {
-                bail!("no prefix read");
-            }
+        if bytes_read == 0 {
+            bail!("no prefix read");
+        }
 
-            macro_rules! parse_body_types {
+        macro_rules! parse_body_types {
             [$($tt:tt),*] => {
                 $(
                     if <$tt as RespParsable>::PREFIX == prefix[0] as char {
@@ -49,10 +44,9 @@ impl Resp {
             };
         }
 
-            parse_body_types![SimpleString, BulkString, Array];
+        parse_body_types![SimpleString, BulkString, Array];
 
-            bail!("unknown prefix: {:?}", prefix[0] as char);
-        })
+        bail!("unknown prefix: {:?}", prefix[0] as char);
     }
 
     pub async fn run(self, write: impl AsyncWrite + Unpin) -> Result<()> {
