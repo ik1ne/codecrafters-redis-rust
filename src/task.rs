@@ -6,7 +6,7 @@ use tokio::task::JoinSet;
 use crate::resp::Resp;
 
 pub async fn run(listener: TcpListener) -> Result<()> {
-    let mut join_set = JoinSet::new();
+    let mut join_set: JoinSet<Result<()>> = JoinSet::new();
 
     loop {
         let (mut socket, _addr) = match listener.accept().await {
@@ -21,9 +21,11 @@ pub async fn run(listener: TcpListener) -> Result<()> {
         };
 
         join_set.spawn(async move {
-            let (read, write) = socket.split();
-
-            handle_operation(&mut BufReader::new(read), write).await
+            let (read, mut write) = socket.split();
+            let mut buf_reader = BufReader::new(read);
+            loop {
+                handle_operation(&mut buf_reader, &mut write).await?;
+            }
         });
     }
 
