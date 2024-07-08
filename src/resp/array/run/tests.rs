@@ -41,3 +41,15 @@ async fn test_run_too_many_arguments() {
     .await
     .unwrap_err();
 }
+
+#[tokio::test]
+async fn test_run_echo() -> Result<()> {
+    assert_run(
+        Resp::Array(Array(vec![
+            Resp::SimpleString(SimpleString("ECHO".to_string())),
+            Resp::SimpleString(SimpleString("hello".to_string())),
+        ])),
+        Resp::SimpleString(SimpleString("hello".to_string())),
+    )
+    .await
+}

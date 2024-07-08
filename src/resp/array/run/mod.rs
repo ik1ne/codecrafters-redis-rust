@@ -4,6 +4,9 @@ use anyhow::{bail, Context, Result};
 
 use crate::resp::{Array, BulkString, Resp, RespRunnable, SimpleString};
 
+mod echo;
+mod ping;
+
 impl RespRunnable for Array {
     async fn run(self) -> Result<Resp> {
         let mut deque = VecDeque::from(self.0);
@@ -15,21 +18,9 @@ impl RespRunnable for Array {
         };
 
         match plain_cmd.to_uppercase().as_str() {
-            "PING" => pong(deque),
+            "PING" => ping::ping(deque),
+            "ECHO" => echo::echo(deque),
             _ => bail!("unknown command {}", plain_cmd),
-        }
-    }
-}
-
-fn pong(mut args: VecDeque<Resp>) -> Result<Resp> {
-    match args.pop_front() {
-        None => Ok(Resp::SimpleString(SimpleString("PONG".to_string()))),
-        Some(message) => {
-            if !args.is_empty() {
-                bail!("too many arguments");
-            }
-
-            Ok(message)
         }
     }
 }
