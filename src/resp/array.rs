@@ -9,7 +9,7 @@ pub struct Array(Vec<Resp>);
 impl RespParsable for Array {
     const PREFIX: char = '*';
 
-    async fn parse_body(mut read: impl AsyncBufRead + Unpin) -> Result<Self>
+    async fn parse_body(mut read: impl AsyncBufRead + Unpin + Send) -> Result<Self>
     where
         Self: Sized,
     {
