@@ -9,7 +9,7 @@ pub struct Array(Vec<Resp>);
 impl RespParsable for Array {
     const PREFIX: char = '*';
 
-    async fn parse_body(mut read: impl AsyncBufRead + Unpin + Send) -> Result<Self>
+    async fn parse_body(read: &mut (impl AsyncBufRead + Unpin + Send)) -> Result<Self>
     where
         Self: Sized,
     {
@@ -18,7 +18,7 @@ impl RespParsable for Array {
         let mut elements = Vec::with_capacity(num_elements);
 
         for _ in 0..num_elements {
-            let element = Resp::parse(&mut read).await?;
+            let element = Resp::parse(read).await?;
             elements.push(element);
         }
 

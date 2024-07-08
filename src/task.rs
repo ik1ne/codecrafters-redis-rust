@@ -24,7 +24,7 @@ pub async fn run(listener: TcpListener) -> Result<()> {
         join_set.spawn(async move {
             let (read, write) = socket.split();
 
-            handle_operation(BufReader::new(read), write).await
+            handle_operation(&mut BufReader::new(read), write).await
         });
     }
 
@@ -40,7 +40,7 @@ pub async fn run(listener: TcpListener) -> Result<()> {
 }
 
 async fn handle_operation(
-    read: impl AsyncBufRead + Unpin + Send,
+    read: &mut (impl AsyncBufRead + Unpin + Send),
     write: impl AsyncWrite + Unpin,
 ) -> Result<()> {
     let resp = Resp::parse(read).await?;

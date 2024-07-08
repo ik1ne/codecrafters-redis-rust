@@ -12,7 +12,7 @@ pub struct BulkString(pub Option<String>);
 impl RespParsable for BulkString {
     const PREFIX: char = '$';
 
-    async fn parse_body(mut read: impl AsyncBufRead + Unpin + Send) -> Result<Self> {
+    async fn parse_body(read: &mut (impl AsyncBufRead + Unpin + Send)) -> Result<Self> {
         let num_bytes = read.read_crlf_line().await?.parse::<i128>()?;
         if num_bytes < 0 {
             return Ok(BulkString(None));

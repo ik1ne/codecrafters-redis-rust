@@ -15,7 +15,7 @@ trait RespParsable {
     const MAX_BYTES: usize = 1_000_000;
     const PREFIX: char;
 
-    async fn parse_body(read: impl AsyncBufRead + Unpin + Send) -> Result<Self>
+    async fn parse_body(read: &mut (impl AsyncBufRead + Unpin + Send)) -> Result<Self>
     where
         Self: Sized;
 }
@@ -29,8 +29,8 @@ pub enum Resp {
 
 impl Resp {
     pub fn parse(
-        mut read: impl AsyncBufRead + Unpin + Send,
-    ) -> impl Future<Output = Result<Self>> + Send {
+        read: &mut (impl AsyncBufRead + Unpin + Send),
+    ) -> impl Future<Output = Result<Self>> + Send + '_ {
         Box::pin(async move {
             let mut prefix = [0; 1];
             let bytes_read = read.read(&mut prefix).await?;

@@ -9,7 +9,7 @@ pub struct SimpleString(pub String);
 impl RespParsable for SimpleString {
     const PREFIX: char = '+';
 
-    async fn parse_body(mut read: impl AsyncBufRead + Unpin + Send) -> Result<Self> {
+    async fn parse_body(read: &mut (impl AsyncBufRead + Unpin + Send)) -> Result<Self> {
         let line = read.read_crlf_line().await?;
 
         Ok(SimpleString(line))
