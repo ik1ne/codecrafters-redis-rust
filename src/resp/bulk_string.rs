@@ -1,14 +1,16 @@
 use anyhow::{bail, Result};
 use std::fmt::{Display, Formatter};
+use std::sync::RwLock;
 use tokio::io::AsyncBufRead;
 
 use crate::resp::simple_string::run_string;
-use crate::resp::{AsyncCrlfReadExt, Resp, RespRunnable, RespVariant};
+use crate::resp::{AsyncCrlfReadExt, RespRunResult, RespRunnable, RespVariant};
+use crate::storage::Storage;
 
 /// Represents a RESP bulk string.
 ///
 /// Bulk string of NULL value is represented as `BulkString(None)`.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct BulkString(pub Option<String>);
 
 impl Display for BulkString {
@@ -43,10 +45,10 @@ impl RespVariant for BulkString {
 }
 
 impl RespRunnable for BulkString {
-    async fn run(self) -> Result<Resp> {
+    async fn run(self, _storage: &RwLock<Storage>) -> Result<RespRunResult> {
         match self.0 {
             None => bail!("bulk string is null"),
-            Some(s) => run_string(s),
+            Some(s) => Ok(RespRunResult::Owned(run_string(s)?)),
         }
     }
 }

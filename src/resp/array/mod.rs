@@ -8,7 +8,7 @@ use crate::resp::{AsyncCrlfReadExt, Resp, RespVariant};
 
 mod run;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Array(Vec<Resp>);
 
 impl Display for Array {

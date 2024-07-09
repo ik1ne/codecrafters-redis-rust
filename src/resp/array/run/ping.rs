@@ -1,18 +1,20 @@
 use std::collections::VecDeque;
 
-use anyhow::bail;
+use anyhow::{bail, Result};
 
-use crate::resp::{Resp, SimpleString};
+use crate::resp::{Resp, RespRunResult, SimpleString};
 
-pub fn ping(mut args: VecDeque<Resp>) -> anyhow::Result<Resp> {
+pub fn ping<'a>(mut args: VecDeque<Resp>) -> Result<RespRunResult<'a>> {
     match args.pop_front() {
-        None => Ok(Resp::SimpleString(SimpleString("PONG".to_string()))),
+        None => Ok(RespRunResult::Owned(Resp::SimpleString(SimpleString(
+            "PONG".to_string(),
+        )))),
         Some(message) => {
             if !args.is_empty() {
                 bail!("too many arguments");
             }
 
-            Ok(message)
+            Ok(RespRunResult::Owned(message))
         }
     }
 }

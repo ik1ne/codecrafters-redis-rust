@@ -1,10 +1,16 @@
-use anyhow::{bail, Result};
 use std::fmt::{Display, Formatter};
+use std::ops::Deref;
+use std::ptr::NonNull;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
+
+use anyhow::{bail, Result};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 pub use array::Array;
 pub use bulk_string::BulkString;
 pub use simple_string::SimpleString;
+
+use crate::storage::Storage;
 
 mod array;
 mod bulk_string;
@@ -20,10 +26,39 @@ trait RespVariant: Display {
 }
 
 trait RespRunnable {
-    async fn run(self) -> Result<Resp>;
+    async fn run(self, storage: &RwLock<Storage>) -> Result<RespRunResult>;
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+enum RespRunResult<'a> {
+    Owned(Resp),
+    Borrowed(RwLockReadGuardedResp<'a>),
+}
+
+impl<'a> Deref for RespRunResult<'a> {
+    type Target = Resp;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            RespRunResult::Owned(resp) => resp,
+            RespRunResult::Borrowed(resp) => resp,
+        }
+    }
+}
+
+struct RwLockReadGuardedResp<'a> {
+    data: NonNull<Resp>,
+    _guard: RwLockReadGuard<'a, Storage>,
+}
+
+impl<'a> Deref for RwLockReadGuardedResp<'a> {
+    type Target = Resp;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.data.as_ref() }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Resp {
     SimpleString(SimpleString),
     BulkString(BulkString),
@@ -64,14 +99,18 @@ impl Resp {
         bail!("unknown prefix: {:?}", prefix[0] as char);
     }
 
-    pub async fn run(self, mut write: impl AsyncWrite + Unpin) -> Result<()> {
-        async fn run_inner(resp: Resp) -> Result<Resp> {
+    pub async fn run(
+        self,
+        mut write: impl AsyncWrite + Unpin,
+        storage: Arc<RwLock<Storage>>,
+    ) -> Result<()> {
+        async fn run_inner(resp: Resp, storage: &RwLock<Storage>) -> Result<RespRunResult> {
             macro_rules! run_types {
                 [$($tt:tt),*] => {
                     $(
                         if let Resp::$tt(inner) =
                         resp {
-                            return inner.run().await;
+                            return inner.run(storage).await;
                         }
                     )*
                 };
@@ -82,9 +121,12 @@ impl Resp {
             bail!("unknown resp type");
         }
 
-        let resp = run_inner(self).await?;
+        let string = {
+            let resp = run_inner(self, storage.as_ref()).await?;
+            resp.to_string()
+        };
 
-        write.write_all(resp.to_string().as_bytes()).await?;
+        write.write_all(string.as_bytes()).await?;
 
         Ok(())
     }
