@@ -17,7 +17,7 @@ impl Display for BulkString {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.0 {
             Some(s) => write!(f, "${}\r\n{}\r\n", s.len(), s),
-            None => write!(f, "${}\r\n", -1),
+            None => write!(f, "$-1\r\n"),
         }
     }
 }

@@ -3,7 +3,7 @@ use std::sync::RwLock;
 
 use anyhow::{bail, Context, Result};
 
-use crate::resp::{Array, BulkString, Resp, RespRunResult, RespRunnable, SimpleString};
+use crate::resp::{Array, RespRunResult, RespRunnable};
 use crate::storage::Storage;
 
 mod echo;
@@ -16,10 +16,7 @@ impl RespRunnable for Array {
         let mut deque = VecDeque::from(self.0);
         let cmd = deque.pop_front().context("empty array")?;
 
-        let plain_cmd = match cmd {
-            Resp::SimpleString(SimpleString(s)) | Resp::BulkString(BulkString(Some(s))) => s,
-            _ => bail!("invalid command type {}", cmd.to_string()),
-        };
+        let plain_cmd = cmd.plain_string().context("invalid command")?;
 
         match plain_cmd.to_uppercase().as_str() {
             "PING" => ping::ping(deque),

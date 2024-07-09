@@ -36,8 +36,15 @@ pub async fn run(listener: TcpListener) -> Result<()> {
     }
 
     while let Some(result) = join_set.join_next().await {
-        if let Err(e) = result {
-            eprintln!("an error occurred; error = {:?}", e);
+        match result {
+            Ok(inner_result) => {
+                if let Err(e) = inner_result {
+                    eprintln!("error occurred; error = {:?}", e);
+                }
+            }
+            Err(e) => {
+                eprintln!("join error occurred; error = {:?}", e);
+            }
         }
     }
 

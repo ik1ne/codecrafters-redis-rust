@@ -8,12 +8,14 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWr
 
 pub use array::Array;
 pub use bulk_string::BulkString;
+pub use integer::Integer;
 pub use simple_string::SimpleString;
 
 use crate::storage::Storage;
 
 mod array;
 mod bulk_string;
+mod integer;
 mod simple_string;
 
 trait RespVariant: Display {
@@ -63,6 +65,7 @@ pub enum Resp {
     SimpleString(SimpleString),
     BulkString(BulkString),
     Array(Array),
+    Integer(Integer),
 }
 
 impl Display for Resp {
@@ -71,6 +74,7 @@ impl Display for Resp {
             Resp::SimpleString(s) => write!(f, "{}", s),
             Resp::BulkString(b) => write!(f, "{}", b),
             Resp::Array(a) => write!(f, "{}", a),
+            Resp::Integer(i) => write!(f, "{}", i),
         }
     }
 }
@@ -94,7 +98,7 @@ impl Resp {
             };
         }
 
-        parse_body_types![SimpleString, BulkString, Array];
+        parse_body_types![SimpleString, BulkString, Array, Integer];
 
         bail!("unknown prefix: {:?}", prefix[0] as char);
     }
@@ -129,6 +133,14 @@ impl Resp {
         write.write_all(string.as_bytes()).await?;
 
         Ok(())
+    }
+
+    pub fn plain_string(&self) -> Result<&str> {
+        match self {
+            Resp::SimpleString(SimpleString(s)) => Ok(s),
+            Resp::BulkString(BulkString(s)) => Ok(s.as_deref().unwrap_or("")),
+            _ => bail!("not a string"),
+        }
     }
 }
 
