@@ -142,7 +142,7 @@ async fn test_default_info() {
             Resp::SimpleString(SimpleString("INFO".to_string())),
             Resp::SimpleString(SimpleString("replication".to_string())),
         ])),
-        Resp::BulkString(BulkString(Some(Config::default().to_vec().join("\n")))),
+        Resp::BulkString(BulkString(Some(Config::default().replication().join("\n")))),
     )
     .await
     .unwrap();
