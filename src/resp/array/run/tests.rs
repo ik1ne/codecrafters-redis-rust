@@ -71,7 +71,7 @@ async fn test_get_no_key() -> Result<()> {
 
 #[tokio::test]
 async fn test_get_key() -> Result<()> {
-    let storage = Arc::new(RwLock::new(Storage::new()));
+    let storage = Default::default();
 
     assert_run_with_storage(
         Resp::Array(Array(vec![
@@ -97,7 +97,7 @@ async fn test_get_key() -> Result<()> {
 
 #[tokio::test]
 async fn test_expiry() -> Result<()> {
-    let storage = Arc::new(RwLock::new(Storage::new()));
+    let storage = Default::default();
 
     assert_run_with_storage(
         Resp::Array(Array(vec![

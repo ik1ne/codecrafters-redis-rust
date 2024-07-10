@@ -89,7 +89,8 @@ impl Resp {
         let bytes_read = read.read(&mut prefix).await?;
 
         if bytes_read == 0 {
-            bail!("no prefix read");
+            // TODO use thiserror to indicate EOF
+            bail!("no bytes read, probably EOF");
         }
 
         macro_rules! parse_body_types {

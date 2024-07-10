@@ -12,9 +12,11 @@ async fn main() -> Result<()> {
 
     let config = Default::default();
 
+    let storage = Default::default();
+
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await?;
 
-    task::run(listener, config).await?;
+    task::run(listener, config, storage).await?;
 
     Ok(())
 }

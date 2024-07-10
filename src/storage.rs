@@ -8,12 +8,6 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub fn new() -> Self {
-        Storage {
-            data: HashMap::new(),
-        }
-    }
-
     pub fn get(&self, key: &Resp) -> Option<&Resp> {
         match self.data.get(key) {
             None => None,
