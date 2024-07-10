@@ -1,10 +1,10 @@
+use crate::config::Config;
+use crate::resp::{AsyncCrlfReadExt, Resp, RespRunResult, RespRunnable, RespVariant};
+use crate::storage::Storage;
 use anyhow::{bail, Result};
 use std::fmt::{Display, Formatter};
 use std::sync::RwLock;
 use tokio::io::AsyncBufRead;
-
-use crate::resp::{AsyncCrlfReadExt, Resp, RespRunResult, RespRunnable, RespVariant};
-use crate::storage::Storage;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct SimpleString(pub String);
@@ -26,7 +26,11 @@ impl RespVariant for SimpleString {
 }
 
 impl RespRunnable for SimpleString {
-    async fn run(self, _storage: &RwLock<Storage>) -> Result<RespRunResult> {
+    async fn run<'a>(
+        self,
+        _storage: &'a RwLock<Storage>,
+        _config: &Config,
+    ) -> Result<RespRunResult<'a>> {
         Ok(RespRunResult::Owned(run_string(self.0)?))
     }
 }

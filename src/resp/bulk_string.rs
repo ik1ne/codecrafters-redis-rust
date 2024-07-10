@@ -1,11 +1,11 @@
+use crate::config::Config;
+use crate::resp::simple_string::run_string;
+use crate::resp::{AsyncCrlfReadExt, RespRunResult, RespRunnable, RespVariant};
+use crate::storage::Storage;
 use anyhow::{bail, Result};
 use std::fmt::{Display, Formatter};
 use std::sync::RwLock;
 use tokio::io::AsyncBufRead;
-
-use crate::resp::simple_string::run_string;
-use crate::resp::{AsyncCrlfReadExt, RespRunResult, RespRunnable, RespVariant};
-use crate::storage::Storage;
 
 /// Represents a RESP bulk string.
 ///
@@ -45,7 +45,11 @@ impl RespVariant for BulkString {
 }
 
 impl RespRunnable for BulkString {
-    async fn run(self, _storage: &RwLock<Storage>) -> Result<RespRunResult> {
+    async fn run<'a>(
+        self,
+        _storage: &'a RwLock<Storage>,
+        _config: &Config,
+    ) -> Result<RespRunResult<'a>> {
         match self.0 {
             None => bail!("bulk string is null"),
             Some(s) => Ok(RespRunResult::Owned(run_string(s)?)),

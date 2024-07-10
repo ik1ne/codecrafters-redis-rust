@@ -7,7 +7,7 @@ use anyhow::{bail, Context, Result};
 use crate::resp::{BulkString, Resp, RespRunResult, RwLockReadGuardedResp};
 use crate::storage::Storage;
 
-pub(crate) fn get(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<RespRunResult> {
+pub fn get(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<RespRunResult> {
     let key = args.pop_front().context("missing key")?;
 
     if !args.is_empty() {

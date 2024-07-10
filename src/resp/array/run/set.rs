@@ -8,10 +8,7 @@ use crate::resp::integer::Integer;
 use crate::resp::{BulkString, Resp, RespRunResult, SimpleString};
 use crate::storage::Storage;
 
-pub(crate) fn set(
-    mut args: VecDeque<Resp>,
-    storage: &RwLock<Storage>,
-) -> Result<RespRunResult<'static>> {
+pub fn set(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<RespRunResult<'static>> {
     let key = args.pop_front().context("missing key")?;
     let value = args.pop_front().context("missing value")?;
 

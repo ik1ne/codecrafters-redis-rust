@@ -134,3 +134,16 @@ async fn test_expiry() -> Result<()> {
     )
     .await
 }
+
+#[tokio::test]
+async fn test_default_info() {
+    assert_run(
+        Resp::Array(Array(vec![
+            Resp::SimpleString(SimpleString("INFO".to_string())),
+            Resp::SimpleString(SimpleString("replication".to_string())),
+        ])),
+        Resp::BulkString(BulkString(Some(Config::default().to_vec().join("\n")))),
+    )
+    .await
+    .unwrap();
+}

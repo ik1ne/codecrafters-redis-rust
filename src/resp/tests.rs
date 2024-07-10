@@ -19,7 +19,7 @@ pub async fn assert_parse(input: &str, expected: Resp) -> Result<()> {
 pub async fn assert_run(input: Resp, expected: Resp) -> Result<()> {
     let mut buf = Vec::new();
     input
-        .run(&mut buf, Arc::new(RwLock::new(Storage::new())))
+        .run(&mut buf, Default::default(), Default::default())
         .await?;
 
     let result = String::from_utf8(buf)?;
@@ -35,7 +35,7 @@ pub async fn assert_run_with_storage(
     storage: Arc<RwLock<Storage>>,
 ) -> Result<()> {
     let mut buf = Vec::new();
-    input.run(&mut buf, storage).await?;
+    input.run(&mut buf, storage, Default::default()).await?;
 
     let result = String::from_utf8(buf)?;
 

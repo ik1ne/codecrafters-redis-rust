@@ -5,10 +5,11 @@ use tokio::io::{AsyncBufRead, AsyncWrite, BufReader};
 use tokio::net::TcpListener;
 use tokio::task::JoinSet;
 
+use crate::config::Config;
 use crate::resp::Resp;
 use crate::storage::Storage;
 
-pub async fn run(listener: TcpListener) -> Result<()> {
+pub async fn run(listener: TcpListener, config: Arc<Config>) -> Result<()> {
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();
     let storage = Arc::new(RwLock::new(Storage::new()));
 
@@ -25,11 +26,13 @@ pub async fn run(listener: TcpListener) -> Result<()> {
         };
         {
             let storage = Arc::clone(&storage);
+            let config = Arc::clone(&config);
             join_set.spawn(async move {
                 let (read, mut write) = socket.split();
                 let mut buf_reader = BufReader::new(read);
                 loop {
-                    handle_operation(&mut buf_reader, &mut write, storage.clone()).await?;
+                    handle_operation(&mut buf_reader, &mut write, storage.clone(), config.clone())
+                        .await?;
                 }
             });
         }
@@ -57,10 +60,9 @@ async fn handle_operation(
     read: &mut (impl AsyncBufRead + Unpin + Send),
     write: impl AsyncWrite + Unpin,
     storage: Arc<RwLock<Storage>>,
+    config: Arc<Config>,
 ) -> Result<()> {
     let resp = Resp::parse(read).await?;
 
-    resp.run(write, storage).await?;
-
-    Ok(())
+    resp.run(write, storage, config).await
 }
