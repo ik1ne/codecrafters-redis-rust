@@ -61,7 +61,7 @@ pub enum Role {
 
 impl Role {
     pub fn new_slave(replica_of: &str) -> Result<Self> {
-        let mut replica_of = replica_of.split(':');
+        let mut replica_of = replica_of.split(' ');
         let host = replica_of
             .next()
             .context("missing master host")?
