@@ -9,7 +9,7 @@ use crate::resp::{AsyncCrlfReadExt, Resp, RespVariant};
 mod run;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Array(Vec<Resp>);
+pub struct Array(pub Vec<Resp>);
 
 impl Display for Array {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

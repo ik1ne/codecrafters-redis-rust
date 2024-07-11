@@ -1,15 +1,15 @@
 use std::sync::{Arc, Mutex, RwLock};
 
-use anyhow::{anyhow, Result};
-use tokio::io::{AsyncBufRead, AsyncWrite, BufReader};
-use tokio::net::TcpListener;
+use anyhow::{anyhow, bail, Result};
+use tokio::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
 use tokio::task::JoinSet;
 
-use crate::resp::Resp;
+use crate::resp::{Array, Resp, SimpleString};
 use crate::storage::Storage;
 
-pub async fn run(listener: TcpListener, storage: Arc<RwLock<Storage>>) -> Result<()> {
+pub async fn serve_client(listener: TcpListener, storage: Arc<RwLock<Storage>>) -> Result<()> {
     let join_set: Arc<Mutex<JoinSet<Result<()>>>> = Arc::new(Mutex::new(JoinSet::new()));
 
     let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -98,4 +98,30 @@ async fn run_resp_loop(
 
         resp.run(&mut write, Arc::clone(&storage)).await?;
     }
+}
+
+pub async fn start_replication(
+    connection_string: String,
+    _storage: Arc<RwLock<Storage>>,
+) -> Result<()> {
+    let mut sock = TcpStream::connect(connection_string).await?;
+
+    send_ping_receive_pong(&mut sock).await?;
+
+    Ok(())
+}
+
+async fn send_ping_receive_pong(sock: &mut TcpStream) -> Result<()> {
+    let ping = Resp::Array(Array(vec![Resp::SimpleString(SimpleString(
+        "PING".to_string(),
+    ))]));
+    let ping_string = ping.to_string();
+
+    sock.write_all(ping_string.as_bytes()).await.unwrap();
+    let response = Resp::parse(&mut BufReader::new(sock)).await.unwrap();
+    if response.plain_string()? != "PONG" {
+        bail!("expected PONG, got {:?}", response);
+    }
+
+    Ok(())
 }
