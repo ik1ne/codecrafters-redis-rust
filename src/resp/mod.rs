@@ -6,12 +6,12 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use anyhow::{bail, Result};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::config::Config;
-use crate::storage::Storage;
 pub use array::Array;
 pub use bulk_string::BulkString;
 pub use integer::Integer;
 pub use simple_string::SimpleString;
+
+use crate::storage::Storage;
 
 mod array;
 mod bulk_string;
@@ -28,11 +28,7 @@ trait RespVariant: Display {
 }
 
 trait RespRunnable {
-    async fn run<'a>(
-        self,
-        storage: &'a RwLock<Storage>,
-        config: &Config,
-    ) -> Result<RespRunResult<'a>>;
+    async fn run(self, storage: &RwLock<Storage>) -> Result<RespRunResult>;
 }
 
 enum RespRunResult<'a> {
@@ -112,19 +108,14 @@ impl Resp {
         self,
         mut write: impl AsyncWrite + Unpin,
         storage: Arc<RwLock<Storage>>,
-        config: Arc<Config>,
     ) -> Result<()> {
-        async fn run_inner<'a>(
-            resp: Resp,
-            storage: &'a RwLock<Storage>,
-            config: &Config,
-        ) -> Result<RespRunResult<'a>> {
+        async fn run_inner(resp: Resp, storage: &RwLock<Storage>) -> Result<RespRunResult> {
             macro_rules! run_types {
                 [$($tt:tt),*] => {
                     $(
                         if let Resp::$tt(inner) =
                         resp {
-                            return inner.run(storage, config).await;
+                            return inner.run(storage).await;
                         }
                     )*
                 };
@@ -136,7 +127,7 @@ impl Resp {
         }
 
         let string = {
-            let resp = run_inner(self, storage.as_ref(), config.as_ref()).await?;
+            let resp = run_inner(self, storage.as_ref()).await?;
             resp.to_string()
         };
 

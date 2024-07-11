@@ -6,15 +6,10 @@ use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tokio::task::JoinSet;
 
-use crate::config::Config;
 use crate::resp::Resp;
 use crate::storage::Storage;
 
-pub async fn run(
-    listener: TcpListener,
-    config: Arc<Config>,
-    storage: Arc<RwLock<Storage>>,
-) -> Result<()> {
+pub async fn run(listener: TcpListener, storage: Arc<RwLock<Storage>>) -> Result<()> {
     let join_set: Arc<Mutex<JoinSet<Result<()>>>> = Arc::new(Mutex::new(JoinSet::new()));
 
     let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -24,13 +19,7 @@ pub async fn run(
     let shutdown_rx_task = shutdown_rx_for_listener.changed();
     tokio::pin!(shutdown_rx_task);
 
-    let listener_loop_task = listener_loop(
-        listener,
-        config,
-        storage,
-        Arc::clone(&join_set),
-        shutdown_rx,
-    );
+    let listener_loop_task = listener_loop(listener, storage, Arc::clone(&join_set), shutdown_rx);
 
     tokio::select! {
         _ = &mut shutdown_rx_task => {}
@@ -66,7 +55,6 @@ pub async fn run(
 
 async fn listener_loop(
     listener: TcpListener,
-    config: Arc<Config>,
     storage: Arc<RwLock<Storage>>,
     join_set: Arc<Mutex<JoinSet<Result<()>>>>,
     shutdown_rx: watch::Receiver<()>,
@@ -74,7 +62,6 @@ async fn listener_loop(
     loop {
         let (mut stream, _address) = listener.accept().await?;
 
-        let config = Arc::clone(&config);
         let storage = Arc::clone(&storage);
         let mut join_set = join_set
             .lock()
@@ -85,7 +72,7 @@ async fn listener_loop(
             let (read, write) = stream.split();
             let mut read = BufReader::new(read);
 
-            let resp_loop = run_resp_loop(&mut read, write, storage, config);
+            let resp_loop = run_resp_loop(&mut read, write, storage);
 
             tokio::select! {
                 _ = shutdown_rx.changed() => {}
@@ -105,12 +92,10 @@ async fn run_resp_loop(
     read: &mut (impl AsyncBufRead + Unpin + Send),
     mut write: impl AsyncWrite + Unpin,
     storage: Arc<RwLock<Storage>>,
-    config: Arc<Config>,
 ) -> Result<()> {
     loop {
         let resp = Resp::parse(read).await?;
 
-        resp.run(&mut write, Arc::clone(&storage), Arc::clone(&config))
-            .await?;
+        resp.run(&mut write, Arc::clone(&storage)).await?;
     }
 }

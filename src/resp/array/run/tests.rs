@@ -137,13 +137,19 @@ async fn test_expiry() -> Result<()> {
 
 #[tokio::test]
 async fn test_default_info() {
-    assert_run(
-        Resp::Array(Array(vec![
-            Resp::SimpleString(SimpleString("INFO".to_string())),
-            Resp::SimpleString(SimpleString("replication".to_string())),
-        ])),
-        Resp::BulkString(BulkString(Some(Config::default().replication().join("\n")))),
-    )
-    .await
-    .unwrap();
+    let cmd = Resp::Array(Array(vec![
+        Resp::SimpleString(SimpleString("INFO".to_string())),
+        Resp::SimpleString(SimpleString("replication".to_string())),
+    ]));
+
+    let mut buf = Vec::new();
+    cmd.run(&mut buf, Default::default()).await.unwrap();
+
+    let s = String::from_utf8(buf).unwrap();
+    let lines = s.lines().collect::<Vec<_>>();
+    assert!(lines.iter().any(|line| line.contains("role:master")));
+    assert!(lines.iter().any(|line| line.contains("master_replid:")));
+    assert!(lines
+        .iter()
+        .any(|line| line.contains("master_repl_offset:")));
 }

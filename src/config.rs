@@ -1,52 +1,57 @@
-use anyhow::{Context, Result};
+use std::collections::HashMap;
+use std::fmt::Debug;
 
-use std::fmt::{Debug, Display, Formatter};
+use anyhow::{bail, Context, Result};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub port: u16,
     pub role: Role,
 }
 
 impl Config {
-    pub(crate) fn parse_args() -> Result<Self> {
-        let port = get_arg_value(&mut std::env::args(), "--port")
-            .unwrap_or("6379".to_string())
-            .parse()?;
-        let role = match get_arg_value(&mut std::env::args(), "--replicaof") {
-            None => Role::Master,
-            Some(master_string) => {
-                let mut master_string = master_string.split(' ');
-                let host = master_string.next().context("missing master host")?;
-                let port = master_string
-                    .next()
-                    .context("missing master port")?
-                    .parse()?;
+    pub(crate) fn parse_parameter(mut parameter: impl Iterator<Item = String>) -> Result<Self> {
+        let mut result = HashMap::new();
 
-                Role::Slave {
-                    master_host: host.to_string(),
-                    master_port: port,
-                }
+        while let Some(key) = parameter.next() {
+            if !key.starts_with("--") {
+                bail!("invalid parameter: {}", key);
             }
+
+            let Some(value) = parameter.next() else {
+                bail!("missing value for parameter: {}", key);
+            };
+
+            result.insert(key[2..].to_string(), value);
+        }
+
+        let port = result
+            .get("port")
+            .map(|s| s.as_str())
+            .unwrap_or("6379")
+            .parse()?;
+
+        let role = match result.get("replicaof") {
+            None => Role::Master,
+            Some(replica_of) => Role::new_slave(replica_of)?,
         };
 
         Ok(Config { port, role })
     }
 }
 
-fn get_arg_value(args: &mut std::env::Args, arg_name: &str) -> Option<String> {
-    args.find(|arg| arg == arg_name).and_then(|_| args.next())
-}
-
-impl Config {
-    pub fn replication(&self) -> Vec<String> {
-        vec![format!("role:{}", self.role.to_string())]
+#[cfg(test)]
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            port: 6379,
+            role: Role::Master,
+        }
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Role {
-    #[default]
     Master,
     Slave {
         master_host: String,
@@ -54,11 +59,18 @@ pub enum Role {
     },
 }
 
-impl Display for Role {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Role::Master => write!(f, "master"),
-            Role::Slave { .. } => write!(f, "slave"),
-        }
+impl Role {
+    pub fn new_slave(replica_of: &str) -> Result<Self> {
+        let mut replica_of = replica_of.split(':');
+        let host = replica_of
+            .next()
+            .context("missing master host")?
+            .to_string();
+        let port = replica_of.next().context("missing master port")?.parse()?;
+
+        Ok(Role::Slave {
+            master_host: host,
+            master_port: port,
+        })
     }
 }
