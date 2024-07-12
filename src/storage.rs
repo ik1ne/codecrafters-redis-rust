@@ -57,6 +57,13 @@ impl Replication {
             .join("\n"),
         }
     }
+
+    pub fn info_psync(&self) -> Option<String> {
+        match self {
+            Replication::Master { replid, offset } => Some(format!("{} {}", replid, offset)),
+            Replication::Slave { .. } => None,
+        }
+    }
 }
 
 impl Storage {
