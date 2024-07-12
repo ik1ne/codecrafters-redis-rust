@@ -1,11 +1,11 @@
 use std::sync::{Arc, RwLock};
 
-use anyhow::Result;
-use tokio::net::TcpListener;
-use tokio::task::JoinSet;
-
 use crate::config::{Config, Role};
 use crate::storage::Storage;
+use anyhow::Result;
+use task::{replication, serve_client};
+use tokio::net::TcpListener;
+use tokio::task::JoinSet;
 
 mod config;
 mod resp;
@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
         master_port,
     } = &config.role
     {
-        let replication_task = task::start_replication(
+        let replication_task = replication::start_replication(
             format!("{}:{}", master_host, master_port),
             Arc::clone(&storage),
             Arc::clone(&config),
@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
 
     let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).await?;
 
-    join_set.spawn(task::serve_client(listener, storage));
+    join_set.spawn(serve_client::run(listener, storage));
 
     while let Some(join_result) = join_set.join_next().await {
         match join_result {
