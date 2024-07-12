@@ -14,7 +14,7 @@ mod task;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let config = Config::parse_parameter(std::env::args().skip(1))?;
+    let config = Arc::new(Config::parse_parameter(std::env::args().skip(1))?);
     let storage = Arc::new(RwLock::new(Storage::new(&config)));
 
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();
@@ -27,6 +27,7 @@ async fn main() -> Result<()> {
         let replication_task = task::start_replication(
             format!("{}:{}", master_host, master_port),
             Arc::clone(&storage),
+            Arc::clone(&config),
         );
 
         join_set.spawn(replication_task);
