@@ -2,14 +2,18 @@ use std::collections::VecDeque;
 
 use anyhow::{bail, Context, Result};
 
-use crate::resp::{Resp, RespRunResult};
+use crate::resp::resp_effect::{RespEffect, RespRunResult};
+use crate::resp::Resp;
 
-pub fn echo(mut args: VecDeque<Resp>) -> Result<RespRunResult<'static>> {
+pub async fn echo(mut args: VecDeque<Resp>) -> Result<RespEffect<'static>> {
     let message = args.pop_front().context("missing message")?;
 
     if !args.is_empty() {
         bail!("too many arguments");
     }
 
-    Ok(RespRunResult::Owned(message))
+    Ok(RespEffect {
+        run_result: RespRunResult::Owned(message),
+        post_run_cmd: None,
+    })
 }

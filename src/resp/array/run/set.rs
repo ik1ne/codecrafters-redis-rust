@@ -1,14 +1,18 @@
 use std::collections::VecDeque;
-use std::sync::RwLock;
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
+use tokio::sync::RwLock;
 
 use crate::resp::integer::Integer;
-use crate::resp::{BulkString, Resp, RespRunResult, SimpleString};
+use crate::resp::resp_effect::{RespEffect, RespRunResult};
+use crate::resp::{BulkString, Resp, SimpleString};
 use crate::storage::Storage;
 
-pub fn set(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<RespRunResult<'static>> {
+pub async fn set(
+    mut args: VecDeque<Resp>,
+    storage: &RwLock<Storage>,
+) -> Result<RespEffect<'static>> {
     let key = args.pop_front().context("missing key")?;
     let value = args.pop_front().context("missing value")?;
 
@@ -39,11 +43,12 @@ pub fn set(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<RespRu
         bail!("too many arguments");
     }
 
-    let mut storage = storage.write().unwrap();
+    let mut storage = storage.write().await;
 
     storage.set(key, value, expiry);
 
-    Ok(RespRunResult::Owned(Resp::SimpleString(SimpleString(
-        "OK".to_string(),
-    ))))
+    Ok(RespEffect {
+        run_result: RespRunResult::Owned(Resp::SimpleString(SimpleString("OK".to_string()))),
+        post_run_cmd: None,
+    })
 }

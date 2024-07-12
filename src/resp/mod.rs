@@ -1,22 +1,24 @@
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
-use std::ptr::NonNull;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::Arc;
 
 use anyhow::{bail, Result};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::sync::RwLock;
 
 pub use array::Array;
 pub use bulk_string::BulkString;
 pub use integer::Integer;
 pub use simple_string::SimpleString;
 
+use crate::resp::resp_effect::RespEffect;
 use crate::storage::Storage;
 
 mod array;
 mod bulk_string;
 mod integer;
 mod simple_string;
+
+mod resp_effect;
 
 trait RespVariant: Display {
     const MAX_BYTES: usize = 1_000_000;
@@ -28,36 +30,7 @@ trait RespVariant: Display {
 }
 
 trait RespRunnable {
-    async fn run(self, storage: &RwLock<Storage>) -> Result<RespRunResult>;
-}
-
-enum RespRunResult<'a> {
-    Owned(Resp),
-    Borrowed(RwLockReadGuardedResp<'a>),
-}
-
-impl<'a> Deref for RespRunResult<'a> {
-    type Target = Resp;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            RespRunResult::Owned(resp) => resp,
-            RespRunResult::Borrowed(resp) => resp,
-        }
-    }
-}
-
-struct RwLockReadGuardedResp<'a> {
-    data: NonNull<Resp>,
-    _guard: RwLockReadGuard<'a, Storage>,
-}
-
-impl<'a> Deref for RwLockReadGuardedResp<'a> {
-    type Target = Resp;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.data.as_ref() }
-    }
+    async fn run(self, storage: &RwLock<Storage>) -> Result<RespEffect>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -106,10 +79,10 @@ impl Resp {
 
     pub async fn run(
         self,
-        mut write: impl AsyncWrite + Unpin,
+        mut write: impl AsyncWrite + Send + Unpin,
         storage: Arc<RwLock<Storage>>,
     ) -> Result<()> {
-        async fn run_inner(resp: Resp, storage: &RwLock<Storage>) -> Result<RespRunResult> {
+        async fn run_inner(resp: Resp, storage: &RwLock<Storage>) -> Result<RespEffect> {
             macro_rules! run_types {
                 [$($tt:tt),*] => {
                     $(
@@ -126,12 +99,22 @@ impl Resp {
             bail!("unknown resp type");
         }
 
-        let string = {
-            let resp = run_inner(self, storage.as_ref()).await?;
-            resp.to_string()
+        let (run_result, post_run_cmd) = {
+            let RespEffect {
+                run_result,
+                post_run_cmd,
+            } = run_inner(self, storage.as_ref()).await?;
+
+            let run_result = run_result.to_string();
+
+            (run_result, post_run_cmd)
         };
 
-        write.write_all(string.as_bytes()).await?;
+        write.write_all(run_result.as_bytes()).await?;
+
+        if let Some(post_run_cmd) = post_run_cmd {
+            post_run_cmd.run(write, storage).await?;
+        }
 
         Ok(())
     }

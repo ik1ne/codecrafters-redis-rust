@@ -1,8 +1,12 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
+use anyhow::{bail, Result};
+use tokio::io::{AsyncWrite, AsyncWriteExt};
+
 use crate::config::{Config, Role};
 use crate::resp::Resp;
+use crate::utils::unhex;
 
 const RANDOM_REPLID: &str = "random_replid";
 
@@ -85,6 +89,10 @@ impl Storage {
 }
 
 impl Storage {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
     pub fn get(&self, key: &Resp) -> Option<&Resp> {
         match self.data.get(key) {
             None => None,
@@ -105,5 +113,23 @@ impl Storage {
     pub fn set(&mut self, key: Resp, value: Resp, expiry: Option<Duration>) {
         self.data
             .insert(key, (value, expiry.map(|d| SystemTime::now() + d)));
+    }
+
+    pub async fn encode(&self, mut write: impl AsyncWrite + Send + Unpin) -> Result<()> {
+        if !self.is_empty() {
+            bail!("full resync currently only supported for empty storage");
+        }
+
+        const EMPTY_RDB_FILE_HEX:&str = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
+
+        let bytes = unhex(EMPTY_RDB_FILE_HEX)?;
+
+        write.write_all("$".as_bytes()).await?;
+        write
+            .write_all(format!("{}\r\n", bytes.len()).as_bytes())
+            .await?;
+        write.write_all(&bytes).await?;
+
+        Ok(())
     }
 }

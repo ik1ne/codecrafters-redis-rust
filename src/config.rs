@@ -10,7 +10,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub(crate) fn parse_parameter(mut parameter: impl Iterator<Item = String>) -> Result<Self> {
+    pub fn parse_parameter(mut parameter: impl Iterator<Item = String>) -> Result<Self> {
         let mut result = HashMap::new();
 
         while let Some(key) = parameter.next() {

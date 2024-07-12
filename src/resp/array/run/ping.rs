@@ -2,19 +2,23 @@ use std::collections::VecDeque;
 
 use anyhow::{bail, Result};
 
-use crate::resp::{Resp, RespRunResult, SimpleString};
+use crate::resp::resp_effect::RespRunResult;
+use crate::resp::{Resp, RespEffect, SimpleString};
 
-pub fn ping<'a>(mut args: VecDeque<Resp>) -> Result<RespRunResult<'a>> {
-    match args.pop_front() {
-        None => Ok(RespRunResult::Owned(Resp::SimpleString(SimpleString(
-            "PONG".to_string(),
-        )))),
+pub async fn ping(mut args: VecDeque<Resp>) -> Result<RespEffect<'static>> {
+    let run_result = match args.pop_front() {
+        None => RespRunResult::Owned(Resp::SimpleString(SimpleString("PONG".to_string()))),
         Some(message) => {
             if !args.is_empty() {
                 bail!("too many arguments");
             }
 
-            Ok(RespRunResult::Owned(message))
+            RespRunResult::Owned(message)
         }
-    }
+    };
+
+    Ok(RespEffect {
+        run_result,
+        post_run_cmd: None,
+    })
 }

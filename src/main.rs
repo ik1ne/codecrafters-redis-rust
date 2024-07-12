@@ -1,16 +1,20 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+
+use anyhow::Result;
+use tokio::net::TcpListener;
+use tokio::sync::RwLock;
+use tokio::task::JoinSet;
+
+use task::{replication, serve_client};
 
 use crate::config::{Config, Role};
 use crate::storage::Storage;
-use anyhow::Result;
-use task::{replication, serve_client};
-use tokio::net::TcpListener;
-use tokio::task::JoinSet;
 
 mod config;
 mod resp;
 mod storage;
 mod task;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<()> {

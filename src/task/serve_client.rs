@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Result};
 use tokio::io::{AsyncBufRead, AsyncWrite, BufReader};
 use tokio::net::TcpListener;
-use tokio::sync::watch;
+use tokio::sync::{watch, RwLock};
 use tokio::task::JoinSet;
 
 use crate::resp::Resp;
@@ -90,7 +90,7 @@ async fn listener_loop(
 
 async fn run_resp_loop(
     read: &mut (impl AsyncBufRead + Unpin + Send),
-    mut write: impl AsyncWrite + Unpin,
+    mut write: impl AsyncWrite + Unpin + Send,
     storage: Arc<RwLock<Storage>>,
 ) -> Result<()> {
     loop {

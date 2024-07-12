@@ -1,12 +1,13 @@
 use std::collections::VecDeque;
-use std::sync::RwLock;
 
 use anyhow::{ensure, Context, Result};
+use tokio::sync::RwLock;
 
-use crate::resp::{Resp, RespRunResult, SimpleString};
+use crate::resp::resp_effect::{PostRespRunCommand, RespEffect, RespRunResult};
+use crate::resp::{Resp, SimpleString};
 use crate::storage::Storage;
 
-pub(crate) fn psync(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<RespRunResult> {
+pub async fn psync(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<RespEffect> {
     let replid = args.pop_front().context("missing replid")?;
     let replid = replid.plain_string()?;
 
@@ -19,12 +20,15 @@ pub(crate) fn psync(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Resu
 
     let psync_info = storage
         .read()
-        .unwrap()
+        .await
         .replication
         .info_psync()
         .context("no replication info")?;
 
     let reply = Resp::SimpleString(SimpleString(format!("FULLRESYNC {}", psync_info)));
 
-    Ok(RespRunResult::Owned(reply))
+    Ok(RespEffect {
+        run_result: RespRunResult::Owned(reply),
+        post_run_cmd: Some(PostRespRunCommand::FullResync),
+    })
 }

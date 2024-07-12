@@ -1,11 +1,12 @@
 use std::fmt::{Display, Formatter};
-use std::sync::RwLock;
 
 use anyhow::{bail, Result};
 use tokio::io::AsyncBufRead;
+use tokio::sync::RwLock;
 
+use crate::resp::resp_effect::RespRunResult;
 use crate::resp::simple_string::run_string;
-use crate::resp::{AsyncCrlfReadExt, RespRunResult, RespRunnable, RespVariant};
+use crate::resp::{AsyncCrlfReadExt, RespEffect, RespRunnable, RespVariant};
 use crate::storage::Storage;
 
 /// Represents a RESP bulk string.
@@ -46,10 +47,13 @@ impl RespVariant for BulkString {
 }
 
 impl RespRunnable for BulkString {
-    async fn run(self, _storage: &RwLock<Storage>) -> Result<RespRunResult> {
+    async fn run(self, _storage: &RwLock<Storage>) -> Result<RespEffect> {
         match self.0 {
             None => bail!("bulk string is null"),
-            Some(s) => Ok(RespRunResult::Owned(run_string(s)?)),
+            Some(s) => Ok(RespEffect {
+                run_result: RespRunResult::Owned(run_string(s)?),
+                post_run_cmd: None,
+            }),
         }
     }
 }
