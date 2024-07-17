@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 use std::ptr::NonNull;
+use std::sync::RwLock;
 
 use anyhow::{bail, Context, Result};
-use tokio::sync::RwLock;
 
 use crate::resp::resp_effect::{RespEffect, RespRunResult, RwLockReadGuardedResp};
 use crate::resp::{BulkString, Resp};
@@ -15,7 +15,7 @@ pub async fn get(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Result<
         bail!("too many arguments");
     }
 
-    let lock = storage.read().await;
+    let lock = storage.read().unwrap();
     let Some(value) = lock.get(&key) else {
         return Ok(RespEffect {
             run_result: RespRunResult::Owned(Resp::BulkString(BulkString(None))),

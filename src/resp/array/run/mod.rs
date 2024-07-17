@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
+use std::sync::RwLock;
 
 use anyhow::{bail, Context, Result};
-use tokio::sync::RwLock;
 
 use crate::resp::{Array, RespEffect, RespRunnable};
 use crate::storage::Storage;

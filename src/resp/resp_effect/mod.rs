@@ -1,10 +1,9 @@
 use std::ops::Deref;
 use std::ptr::NonNull;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use anyhow::{bail, Result};
-use tokio::io::AsyncWrite;
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use crate::resp::Resp;
 use crate::storage::Storage;
@@ -46,16 +45,20 @@ pub enum PostRespRunCommand {
 impl PostRespRunCommand {
     pub async fn run(
         &self,
-        write: impl AsyncWrite + Unpin + Send,
+        mut write: impl AsyncWrite + Unpin + Send,
         storage: Arc<RwLock<Storage>>,
     ) -> Result<()> {
         match self {
             PostRespRunCommand::FullResync => {
-                if !storage.read().await.is_empty() {
+                if !storage.read().unwrap().is_empty() {
                     bail!("full resync currently only supported for empty storage");
                 }
 
-                storage.read().await.encode(write).await
+                let encoded = storage.read().unwrap().encode()?;
+
+                write.write_all(&encoded).await?;
+
+                Ok(())
             }
         }
     }

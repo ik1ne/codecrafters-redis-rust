@@ -1,8 +1,8 @@
 use std::sync::Arc;
+use std::sync::RwLock;
 
 use anyhow::Result;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 
 use task::{replication, serve_client};

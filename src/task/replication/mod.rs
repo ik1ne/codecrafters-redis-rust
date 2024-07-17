@@ -1,9 +1,9 @@
 use std::sync::Arc;
+use std::sync::RwLock;
 
 use anyhow::{bail, Result};
 use tokio::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
-use tokio::sync::RwLock;
 
 use crate::config::Config;
 use crate::resp::{Array, Resp, SimpleString};

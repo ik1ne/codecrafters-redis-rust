@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 use anyhow::{bail, Result};
-use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use crate::config::{Config, Role};
 use crate::resp::Resp;
@@ -115,7 +114,7 @@ impl Storage {
             .insert(key, (value, expiry.map(|d| SystemTime::now() + d)));
     }
 
-    pub async fn encode(&self, mut write: impl AsyncWrite + Send + Unpin) -> Result<()> {
+    pub fn encode(&self) -> Result<Vec<u8>> {
         if !self.is_empty() {
             bail!("full resync currently only supported for empty storage");
         }
@@ -124,12 +123,18 @@ impl Storage {
 
         let bytes = unhex(EMPTY_RDB_FILE_HEX)?;
 
-        write.write_all("$".as_bytes()).await?;
-        write
-            .write_all(format!("{}\r\n", bytes.len()).as_bytes())
-            .await?;
-        write.write_all(&bytes).await?;
+        let mut result = Vec::new();
 
-        Ok(())
+        // write.write_all("$".as_bytes()).await?;
+        // write
+        //     .write_all(format!("{}\r\n", bytes.len()).as_bytes())
+        //     .await?;
+        // write.write_all(&bytes).await?;
+
+        result.extend_from_slice("$".as_bytes());
+        result.extend(format!("{}\r\n", bytes.len()).as_bytes());
+        result.extend_from_slice(&bytes);
+
+        Ok(result)
     }
 }

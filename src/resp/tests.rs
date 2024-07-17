@@ -1,8 +1,8 @@
 use std::sync::Arc;
+use std::sync::RwLock;
 
 use anyhow::Result;
 use tokio::io::BufReader;
-use tokio::sync::RwLock;
 
 use crate::resp::Resp;
 use crate::storage::Storage;

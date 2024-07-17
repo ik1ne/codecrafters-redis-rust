@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
+use std::sync::RwLock;
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
-use tokio::sync::RwLock;
 
 use crate::resp::integer::Integer;
 use crate::resp::resp_effect::{RespEffect, RespRunResult};
@@ -43,7 +43,7 @@ pub async fn set(
         bail!("too many arguments");
     }
 
-    let mut storage = storage.write().await;
+    let mut storage = storage.write().unwrap();
 
     storage.set(key, value, expiry);
 

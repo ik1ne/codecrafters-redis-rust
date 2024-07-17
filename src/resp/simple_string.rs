@@ -1,8 +1,8 @@
 use std::fmt::{Display, Formatter};
+use std::sync::RwLock;
 
 use anyhow::{bail, Result};
 use tokio::io::AsyncBufRead;
-use tokio::sync::RwLock;
 
 use crate::resp::resp_effect::RespRunResult;
 use crate::resp::{AsyncCrlfReadExt, Resp, RespEffect, RespRunnable, RespVariant};

@@ -1,9 +1,8 @@
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use anyhow::{bail, Result};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::sync::RwLock;
 
 pub use array::Array;
 pub use bulk_string::BulkString;

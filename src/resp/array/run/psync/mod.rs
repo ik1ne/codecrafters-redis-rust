@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
+use std::sync::RwLock;
 
 use anyhow::{ensure, Context, Result};
-use tokio::sync::RwLock;
 
 use crate::resp::resp_effect::{PostRespRunCommand, RespEffect, RespRunResult};
 use crate::resp::{Resp, SimpleString};
@@ -20,7 +20,7 @@ pub async fn psync(mut args: VecDeque<Resp>, storage: &RwLock<Storage>) -> Resul
 
     let psync_info = storage
         .read()
-        .await
+        .unwrap()
         .replication
         .info_psync()
         .context("no replication info")?;

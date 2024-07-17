@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
+use std::sync::RwLock;
 
 use anyhow::{anyhow, bail, Result};
-use tokio::sync::RwLock;
 
 use crate::resp::resp_effect::{RespEffect, RespRunResult};
 use crate::resp::{BulkString, Resp};
@@ -18,7 +18,7 @@ pub async fn info(
     let info_target = first_arg.plain_string()?;
 
     let s = match info_target.to_lowercase().as_str() {
-        "replication" => storage.read().await.replication.info(),
+        "replication" => storage.read().unwrap().replication.info(),
         _ => bail!("unsupported info target: {}", info_target),
     };
 

@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use anyhow::{anyhow, Result};
 use tokio::io::{AsyncBufRead, AsyncWrite, BufReader};
 use tokio::net::TcpListener;
-use tokio::sync::{watch, RwLock};
+use tokio::sync::watch;
 use tokio::task::JoinSet;
 
 use crate::resp::Resp;
